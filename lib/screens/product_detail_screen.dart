@@ -1,8 +1,11 @@
 import 'dart:ui';
 
+import 'package:apple_shop/bloc/basket/basket_bloc.dart';
+import 'package:apple_shop/bloc/basket/basket_event.dart';
 import 'package:apple_shop/bloc/product/product_bloc.dart';
 import 'package:apple_shop/bloc/product/product_event.dart';
 import 'package:apple_shop/bloc/product/product_state.dart';
+import 'package:apple_shop/data/model/card_item.dart';
 import 'package:apple_shop/data/model/category.dart';
 import 'package:apple_shop/data/model/product.dart';
 import 'package:apple_shop/data/model/product_variant.dart';
@@ -10,9 +13,11 @@ import 'package:apple_shop/data/model/properties.dart';
 import 'package:apple_shop/data/model/variant_type.dart';
 import 'package:apple_shop/data/repository/product_detail_repository.dart';
 import 'package:apple_shop/di/di.dart';
+import 'package:apple_shop/screens/product_list_screen.dart';
 import 'package:apple_shop/widgets/cached_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
 
 import '../constants/colors.dart';
 import '../data/model/product_image.dart';
@@ -29,10 +34,30 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
-    BlocProvider.of<ProductBloc>(context).add(
-        ProductInitializeEvent(widget._product.id, widget._product.category));
     super.initState();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) {
+        var bloc = ProductBloc();
+        bloc.add(ProductInitializeEvent(
+            widget._product.id, widget._product.category));
+        return bloc;
+      },
+      child: DetailContentWidget(widget: widget),
+    );
+  }
+}
+
+class DetailContentWidget extends StatelessWidget {
+  const DetailContentWidget({
+    super.key,
+    required this.widget,
+  });
+
+  final ProductDetailScreen widget;
 
   @override
   Widget build(BuildContext context) {
@@ -215,9 +240,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         const EdgeInsets.only(top: 20, right: 44, left: 44),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
+                      children: [
                         PriceTagButton(),
-                        AddToBasketButton(),
+                        AddToBasketButton(widget._product),
                       ],
                     ),
                   ),
@@ -633,7 +658,8 @@ class _GalleryWidgetState extends State<GalleryWidget> {
 }
 
 class AddToBasketButton extends StatelessWidget {
-  const AddToBasketButton({super.key});
+  Product _product;
+  AddToBasketButton(this._product, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -654,14 +680,20 @@ class AddToBasketButton extends StatelessWidget {
             borderRadius: const BorderRadius.all(Radius.circular(15)),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                height: 53,
-                width: 160,
-                child: const Center(
-                  child: Text(
-                    'افزودن سبد خرید',
-                    style: TextStyle(
-                        fontFamily: 'sb', fontSize: 16, color: Colors.white),
+              child: GestureDetector(
+                onTap: () {
+                  context.read<ProductBloc>().add(ProductAddTobasket(_product));
+                  context.read<BasketBloc>().add(BasketFetchFromHiveEvent());
+                },
+                child: Container(
+                  height: 53,
+                  width: 160,
+                  child: const Center(
+                    child: Text(
+                      'افزودن سبد خرید',
+                      style: TextStyle(
+                          fontFamily: 'sb', fontSize: 16, color: Colors.white),
+                    ),
                   ),
                 ),
               ),

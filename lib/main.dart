@@ -2,16 +2,25 @@ import 'dart:ui';
 import 'package:apple_shop/bloc/category/category_bloc.dart';
 import 'package:apple_shop/bloc/home/home_bloc.dart';
 import 'package:apple_shop/constants/colors.dart';
+import 'package:apple_shop/data/model/card_item.dart';
 import 'package:apple_shop/screens/card_screen.dart';
 import 'package:apple_shop/screens/category_screen.dart';
 import 'package:apple_shop/screens/home_screen.dart';
 import 'package:apple_shop/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/adapters.dart';
+import 'bloc/basket/basket_bloc.dart';
+import 'bloc/basket/basket_event.dart';
 import 'di/di.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(BasketItemAdapter());
+  await Hive.openBox<BasketItem>('cardbox');
   await getItInit();
   runApp(const MyApp());
 }
@@ -131,7 +140,14 @@ class _MyAppState extends State<MyApp> {
   List<Widget> getScreens() {
     return <Widget>[
       ProfileScreen(),
-      CardScreen(),
+      BlocProvider(
+        create: ((context) {
+          var bloc = locator.get<BasketBloc>();
+          bloc.add(BasketFetchFromHiveEvent());
+          return bloc;
+        }),
+        child: CardScreen(),
+      ),
       BlocProvider(
         create: (context) => CategoryBloc(),
         child: CategoryScreen(),

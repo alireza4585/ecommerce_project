@@ -1,86 +1,137 @@
+import 'package:apple_shop/bloc/basket/basket_bloc.dart';
+import 'package:apple_shop/bloc/basket/basket_state.dart';
 import 'package:apple_shop/constants/colors.dart';
+import 'package:apple_shop/data/model/card_item.dart';
 import 'package:apple_shop/util/string_extensions.dart';
+
+import 'package:apple_shop/widgets/cached_image.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/container.dart';
 import 'package:flutter/src/widgets/framework.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:zarinpal/zarinpal.dart';
 
-class CardScreen extends StatelessWidget {
-  const CardScreen({super.key});
+class CardScreen extends StatefulWidget {
+  CardScreen({super.key});
 
   @override
+  State<CardScreen> createState() => _CardScreenState();
+}
+
+class _CardScreenState extends State<CardScreen> {
   Widget build(BuildContext context) {
+    var box = Hive.box<BasketItem>('CardBox');
+
     return Scaffold(
         backgroundColor: CustomColors.backgroundScreenColor,
-        body: SafeArea(
-            child: Stack(
-          alignment: AlignmentDirectional.bottomCenter,
-          children: [
-            CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.only(left: 44, right: 44, bottom: 32),
-                    child: Container(
-                      height: 46,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(15),
+        body: SafeArea(child: BlocBuilder<BasketBloc, BasketState>(
+          builder: ((context, state) {
+            return Stack(
+              alignment: AlignmentDirectional.bottomCenter,
+              children: [
+                CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                            left: 44, right: 44, bottom: 32),
+                        child: Container(
+                          height: 46,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(15),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 16,
+                              ),
+                              Image.asset('assets/images/icon_apple_blue.png'),
+                              const Expanded(
+                                child: Text(
+                                  'سبد خرید',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      fontFamily: 'sb',
+                                      fontSize: 16,
+                                      color: CustomColors.blue),
+                                ),
+                              )
+                            ],
+                          ),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                          ),
-                          Image.asset('assets/images/icon_apple_blue.png'),
-                          const Expanded(
-                            child: Text(
-                              'سبد خرید',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontFamily: 'sb',
-                                  fontSize: 16,
-                                  color: CustomColors.blue),
-                            ),
-                          )
-                        ],
-                      ),
                     ),
-                  ),
+                    if (state is BasketDataFetchedState) ...{
+                      state.basketItemList.fold(((l) {
+                        return SliverToBoxAdapter(
+                          child: Text(l),
+                        );
+                      }), ((basketItemList) {
+                        return SliverList(
+                          delegate:
+                              SliverChildBuilderDelegate((context, index) {
+                            return CardItem(basketItemList[index]);
+                          }, childCount: basketItemList.length),
+                        );
+                      }))
+                    },
+                    SliverPadding(padding: EdgeInsets.only(bottom: 100))
+                  ],
                 ),
-                SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                  return CardItem();
-                }, childCount: 10)),
-                SliverPadding(padding: EdgeInsets.only(bottom: 100))
+                if (state is BasketDataFetchedState) ...{
+                  state.FinalPrice.fold(
+                    (l) {
+                      return finalPrice(l);
+                    },
+                    (r) {
+                      return finalPrice(r.toString());
+                    },
+                  ),
+                }
               ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 44, right: 44, bottom: 20),
-              child: SizedBox(
-                height: 53,
-                width: MediaQuery.of(context).size.width,
-                child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        textStyle: TextStyle(fontSize: 18, fontFamily: 'sm'),
-                        backgroundColor: CustomColors.green,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15))),
-                    onPressed: () {},
-                    child: Text('ادامه فرایند خرید')),
-              ),
-            )
-          ],
+            );
+          }),
         )));
   }
 }
 
+class finalPrice extends StatelessWidget {
+  String text;
+  finalPrice(
+    this.text, {
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 44, right: 44, bottom: 20),
+      child: SizedBox(
+        height: 53,
+        width: MediaQuery.of(context).size.width,
+        child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                textStyle: TextStyle(fontSize: 18, fontFamily: 'sm'),
+                backgroundColor: CustomColors.green,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15))),
+            onPressed: () {},
+            child: Text(text)),
+      ),
+    );
+  }
+}
+
 class CardItem extends StatelessWidget {
-  const CardItem({
+  BasketItem basketItem;
+  CardItem(
+    this.basketItem, {
     Key? key,
   }) : super(key: key);
 
@@ -205,7 +256,10 @@ class CardItem extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(right: 10),
-                  child: Image.asset('assets/images/iphone.png'),
+                  child: SizedBox(
+                      height: 104,
+                      width: 75,
+                      child: CachedImage(imageUrl: basketItem.thumbnail)),
                 )
               ],
             ),
@@ -261,7 +315,6 @@ class OptionCheap extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/images/icon_options.png'),
             SizedBox(
               width: 10,
             ),
