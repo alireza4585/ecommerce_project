@@ -23,6 +23,16 @@ class CardScreen extends StatefulWidget {
 
 class _CardScreenState extends State<CardScreen> {
   Widget build(BuildContext context) {
+    PaymentRequest _paymentRequest = PaymentRequest();
+    @override
+    void initState() {
+      _paymentRequest.setIsSandBox(true);
+      _paymentRequest.setAmount(1000);
+      _paymentRequest.setDescription('this is for test');
+      _paymentRequest.setCallbackURL('scheme://host');
+      super.initState();
+    }
+
     var box = Hive.box<BasketItem>('CardBox');
 
     return Scaffold(
