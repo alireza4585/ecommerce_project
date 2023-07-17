@@ -12,6 +12,8 @@ import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:uni_links/uni_links.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:zarinpal/zarinpal.dart';
 
 class CardScreen extends StatefulWidget {
@@ -22,14 +24,30 @@ class CardScreen extends StatefulWidget {
 }
 
 class _CardScreenState extends State<CardScreen> {
+  PaymentRequest _paymentRequests = PaymentRequest();
   Widget build(BuildContext context) {
-    PaymentRequest _paymentRequest = PaymentRequest();
     @override
     void initState() {
-      _paymentRequest.setIsSandBox(true);
-      _paymentRequest.setAmount(1000);
-      _paymentRequest.setDescription('this is for test');
-      _paymentRequest.setCallbackURL('scheme://host');
+      _paymentRequests.setIsSandBox(true);
+      _paymentRequests.setAmount(1000);
+      _paymentRequests.setDescription('this is for test');
+      _paymentRequests.setCallbackURL('expertflutter://shop');
+      _paymentRequests.setMerchantID('kdjkdfjkdjkfsjldkfskdj');
+      // for listen to deeplinke
+      linkStream.listen((deeplink) {
+        if (deeplink!.toLowerCase().contains('authority')) {
+          String? authority = _extractValueFromQuery(deeplink, 'Authority');
+          String? status = _extractValueFromQuery(deeplink, 'Status');
+          ZarinPal().verificationPayment(status!, authority!, _paymentRequests,
+              (isPaymentSuccess, refID, paymentRequest) {
+            if (isPaymentSuccess) {
+              print(refID);
+            } else {
+              print('error');
+            }
+          });
+        }
+      });
       super.initState();
     }
 
@@ -95,14 +113,33 @@ class _CardScreenState extends State<CardScreen> {
                   ],
                 ),
                 if (state is BasketDataFetchedState) ...{
-                  state.FinalPrice.fold(
-                    (l) {
-                      return finalPrice(l);
-                    },
-                    (r) {
-                      return finalPrice(r.toString());
-                    },
-                  ),
+                  Padding(
+                    padding:
+                        const EdgeInsets.only(left: 44, right: 44, bottom: 20),
+                    child: SizedBox(
+                      height: 53,
+                      width: MediaQuery.of(context).size.width,
+                      child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              textStyle:
+                                  TextStyle(fontSize: 18, fontFamily: 'sm'),
+                              backgroundColor: CustomColors.green,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15))),
+                          onPressed: () {
+                            ZarinPal().startPayment(_paymentRequests,
+                                (status, paymentGatewayUri) {
+                              if (status == 100) {
+                                launchUrl(Uri.parse(paymentGatewayUri!),
+                                    mode: LaunchMode.externalApplication);
+                              }
+                            });
+                          },
+                          child: Text((state.FinalPrice == 0)
+                              ? 'سبد خرید شما خالیه '
+                              : '${state.FinalPrice}')),
+                    ),
+                  )
                 }
               ],
             );
@@ -111,32 +148,7 @@ class _CardScreenState extends State<CardScreen> {
   }
 }
 
-class finalPrice extends StatelessWidget {
-  String text;
-  finalPrice(
-    this.text, {
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 44, right: 44, bottom: 20),
-      child: SizedBox(
-        height: 53,
-        width: MediaQuery.of(context).size.width,
-        child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 18, fontFamily: 'sm'),
-                backgroundColor: CustomColors.green,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15))),
-            onPressed: () {},
-            child: Text(text)),
-      ),
-    );
-  }
-}
+// ignore: camel_case_types, must_be_immutable
 
 class CardItem extends StatelessWidget {
   BasketItem basketItem;
@@ -347,4 +359,32 @@ class OptionCheap extends StatelessWidget {
       ),
     );
   }
+}
+
+//expertflutter://shop?authority=13232432342344342&status=ok
+String? _extractValueFromQuery(String url, String key) {
+  // Remove everything before the question mark
+  int queryStartIndex = url.indexOf('?');
+  if (queryStartIndex == -1) return null;
+
+  String query = url.substring(queryStartIndex + 1);
+
+  // Split the query into key-value pairs
+  List<String> pairs = query.split('&');
+
+  // Find the key-value pair that matches the given key
+  for (String pair in pairs) {
+    List<String> keyValue = pair.split('=');
+    if (keyValue.length == 2) {
+      String currentKey = keyValue[0];
+      String value = keyValue[1];
+
+      if (currentKey == key) {
+        // Decode the URL-encoded value
+        return Uri.decodeComponent(value);
+      }
+    }
+  }
+
+  return null;
 }

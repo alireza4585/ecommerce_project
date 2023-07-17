@@ -8,7 +8,7 @@ import '../datasource/basket_datasource.dart';
 abstract class IBaskeRepository {
   Future<Either<String, String>> addProductTobasket(BasketItem basketItem);
   Future<Either<String, List<BasketItem>>> getAllBasketItems();
-  Future<Either<String, int>> getfinal();
+  Future<int> getfinal();
 }
 
 class BasketRepository extends IBaskeRepository {
@@ -35,12 +35,8 @@ class BasketRepository extends IBaskeRepository {
   }
 
   @override
-  Future<Either<String, int>> getfinal() async {
-    try {
-      var fialprice = await _datasource.finalPrice();
-      return right(fialprice);
-    } catch (ex) {
-      return left('error');
-    }
+  Future<int> getfinal() async {
+    var fialprice = await _datasource.finalPrice();
+    return fialprice;
   }
 }
