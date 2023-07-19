@@ -1,4 +1,5 @@
 import 'package:apple_shop/bloc/basket/basket_bloc.dart';
+import 'package:apple_shop/bloc/basket/basket_event.dart';
 import 'package:apple_shop/bloc/basket/basket_state.dart';
 import 'package:apple_shop/constants/colors.dart';
 import 'package:apple_shop/data/model/card_item.dart';
@@ -24,30 +25,11 @@ class CardScreen extends StatefulWidget {
 }
 
 class _CardScreenState extends State<CardScreen> {
-  PaymentRequest _paymentRequests = PaymentRequest();
   Widget build(BuildContext context) {
     @override
     void initState() {
-      _paymentRequests.setIsSandBox(true);
-      _paymentRequests.setAmount(1000);
-      _paymentRequests.setDescription('this is for test');
-      _paymentRequests.setCallbackURL('expertflutter://shop');
-      _paymentRequests.setMerchantID('kdjkdfjkdjkfsjldkfskdj');
       // for listen to deeplinke
-      linkStream.listen((deeplink) {
-        if (deeplink!.toLowerCase().contains('authority')) {
-          String? authority = _extractValueFromQuery(deeplink, 'Authority');
-          String? status = _extractValueFromQuery(deeplink, 'Status');
-          ZarinPal().verificationPayment(status!, authority!, _paymentRequests,
-              (isPaymentSuccess, refID, paymentRequest) {
-            if (isPaymentSuccess) {
-              print(refID);
-            } else {
-              print('error');
-            }
-          });
-        }
-      });
+
       super.initState();
     }
 
@@ -127,13 +109,12 @@ class _CardScreenState extends State<CardScreen> {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15))),
                           onPressed: () {
-                            ZarinPal().startPayment(_paymentRequests,
-                                (status, paymentGatewayUri) {
-                              if (status == 100) {
-                                launchUrl(Uri.parse(paymentGatewayUri!),
-                                    mode: LaunchMode.externalApplication);
-                              }
-                            });
+                            context
+                                .read<BasketBloc>()
+                                .add(BasketPaymentEvent());
+                            context
+                                .read<BasketBloc>()
+                                .add(BasketPaymentRequestEvent());
                           },
                           child: Text((state.FinalPrice == 0)
                               ? 'سبد خرید شما خالیه '
